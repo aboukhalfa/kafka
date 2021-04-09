@@ -1,0 +1,14 @@
+Producer version 2
+Has id + timestamp + camera
+
+kafka / schema registry / topic
+localhost:9092 / localhost:8081  / MotionTopic
+
+Control center
+http://localhost:9021/clusters
+
+Postman DELETE
+http://localhost:8081/subjects/Motion-value
+http://localhost:8081/config
+
+avrogen -s MotionEvent1.avsc . 

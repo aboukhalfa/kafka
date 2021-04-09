@@ -1,0 +1,2 @@
+avrogen -s MotionEvent.avsc .
+dotnet build

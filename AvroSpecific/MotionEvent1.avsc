@@ -1,0 +1,9 @@
+﻿{"namespace": "GeneratedSchemas",
+ "type": "record",
+ "name": "MotionEvent1",
+ "fields": [
+     {"name": "id", "type": "int"},
+     {"name" : "eventtimestamp", "type" : { "type" : "long", "logicalType" : "timestamp-millis" }},
+     {"name": "camera",  "type": "string"}
+ ]
+}

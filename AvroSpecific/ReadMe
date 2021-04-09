@@ -1,0 +1,33 @@
+Run: specify kafka + schema registry + topic
+dotnet run localhost:9092 localhost:8081 toto
+
+Access contro center
+http://localhost:9021/clusters
+
+schema
+{
+  "name": "User",
+  "namespace": "Confluent.Kafka.Examples.AvroSpecific",
+  "type": "record"
+  "fields": [
+    { "name": "name", "type": "string" },
+    { "name": "favorite_number", "type": [ "int", "null" ]},
+    {
+      "name": "favorite_color",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    {
+      "name": "hourly_rate",
+      "type": {
+        "logicalType": "decimal",
+        "precision": 4,
+        "scale": 2,
+        "type": "bytes"
+      }
+    }
+  ],
+
+}

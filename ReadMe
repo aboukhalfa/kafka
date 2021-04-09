@@ -1,0 +1,45 @@
+** Schema versions **
+Version 1:
+id + timestamp + camera
+Version 2:
+id + timestamp + camera + plate
+
+** End points **
+kafka / schema registry
+localhost:9092 / localhost:8081
+
+** Topic **
+Name: Motion
+
+** Control center **
+http://localhost:9021/clusters
+
+
+kafka / schema registry / topic
+localhost:9092 / localhost:8081  / MotionTopic
+
+Control center
+http://localhost:9021/clusters
+
+
+** Schema registry **
+- Postman DELETE subject
+http://localhost:8081/subjects/Motion-value
+
+- CURL delete subjects
+
+curl --location --request DELETE 'http://localhost:8081/subjects/Motion-value' \
+--header 'Accept: application/vnd.schemaregistry.v1+json, application/vnd.schemaregistry+json, application/json'
+
+curl --location --request DELETE 'http://localhost:8081/subjects/Motion-key' \
+--header 'Accept: application/vnd.schemaregistry.v1+json, application/vnd.schemaregistry+json, application/json'
+
+-Query compatibility level
+http://localhost:8081/config
+
+Tool to generate c# code from avro schema
+avrogen -s MotionEvent1.avsc .
+
+** KSQL **
+docker run --rm --interactive --tty confluentinc/cp-ksql-cli http://host.docker.internal:8088
+

@@ -1,0 +1,11 @@
+﻿{"namespace": "GeneratedSchemas",
+ "type": "record",
+ "name": "MotionEvent",
+ "fields": [
+     {"name": "id", "type": "string"},
+     {"name" : "timestamp", "type" : { "type" : "long", "logicalType" : "timestamp-millis" }},
+     {"name": "camera",  "type": "string"},
+     {"name": "motiontype", "type": "enum", "symbols": ["unknown", "car"], default: "unknown" }
+     {"name": "plate",  "type": ["null", "string"], "default": null}
+ ]
+}
