@@ -1,0 +1,54 @@
+What I learned today:
+
+cat >> file1.txt
+CTL-D
+
+> (=replace) vs >> (=append)
+
+echo "bla" > file1.txt
+
+rm -rf directoryWithAllItsContent
+
+k3d cluster create -p "30000-32767:30000-32767@server[0]"
+
+cat <<EOF | kubectl apply -f -
+... 
+EOF
+
+In az cli:
+edit something then you CTL-S (save) + CTL-Q (quit)
+
+Ingress in k8s:
+Outside a k8s cluster: Ingress controller
+Inside k8s cluster: Ingress
+
+Access a ClusterIP service from outside:
+kubectl proxy --port=8080
+http://localhost:8080/api/v1/proxy/namespaces/<NAMESPACE>/services/<SERVICE-NAME>:<PORT-NAME>/
+
+
+Quick run a pod inside the cluster
+kubectl run -it --rm --restart=Never alpine --image=alpine sh
+
+To add curl ^^
+apk --no-cache add curl
+
+To get the ip of ClusterIP service (ex: nginx)
+kubectl get endpoints nginx -o jsonpath='{ .subsets[].addresses[].ip }'
+
+To NodePort in k3d:
+first k3d cluster create -p "8888:32081@server[0]"
+then create a nodeport service with:
+    - port: 8081 #pods in k3d access this service through this port
+    targetPort: 80 #actual port of the app
+    nodePort: 32081 #matches the port defined when creating the k3d cluster
+then you can access from the host through port 8888, for instance curl http://localhost:8888 
+
+To use loadBalancer svc in k3d (note since we only have 1 node this is not the real deal):
+k3d cluster create -p "8888:8042@server[0]"
+then create loadbalancer service with:
+- protocol: TCP
+port: 8042
+targetPort: 80
+then from host (outside k3d): curl http://localhost:8888
+and from inside the cluster curl http://nginx-svc-loadbalancer.default.svc.cluster.local:8042

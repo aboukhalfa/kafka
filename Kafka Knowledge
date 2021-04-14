@@ -1,0 +1,163 @@
+First identify all the ports we need to "open"
+
+k3d cluster create -p "30082:30082@server[0]" -p "31092:31092@server[0]"
+
+important ports
+8082 rest
+9092 headless?
+2888/3888 zookeeper-headless?
+8083 connect
+8088 ksql
+8081 schema registry
+9092 kafka
+9021 control center
+2181 zookeeper
+31090 is the nodeport we can specify for the provided config to access kafka externally
+42092 port specified in advertised listeners 
+
+(see the kafkaservices.yaml incluede)
+
+Create a K3d cluster + open ports
+k3d cluster create -p "8082:8082@server[0]" -p "8083:8083@server[0]" -p "8088:8088@server[0]" -p "8081:8081@server[0]" -p "9092:9092@server[0]" -p "9021:9021@server[0]" -p "31090:31090@server[0]" -p "42092:42092@server[0]" 
+
+Change the /etc/hosts file to access kafka outside the cluster
+127.0.0.1 mykafka-cp-kafka-0.mykafka-cp-kafka-headless.default
+
+In values.yaml of kafka add listener:
+"advertised.listeners": |-
+   EXTERNAL://localhost:$((42092 + ${KAFKA_BROKER_ID}))
+
+Once: get charts with git
+git clone https://github.com/confluentinc/cp-helm-charts.git cp-helm-charts
+
+Install with helm
+helm install mykafka ./cp-helm-charts
+optionnaly (namespace): 
+helm install mykafka ./cp-helm-charts -n kafka
+
+Create the necessary services
+kubectl apply -f kafkaservices.yaml
+
+Test rest api
+curl http://localhost:8082/v3/clusters
+
+KSQL
+docker run --rm --interactive --tty confluentinc/cp-ksql-cli http://host.docker.internal:8088
+
+?
+CREATE STREAM Motion WITH (KAFKA_TOPIC='Motion', VALUE_FORMAT='AVRO');
+
+
+?Create a nodeport service (ports.yaml) to access the port(s) opened above
+kubectl apply -f ports.yaml
+
+?Access the Rest API (30082 is port opened in nodeport):
+localhost:30082/v3/clusters
+
+Scenario:
+
+-Analytics team creates 1st version of MotionEvent 
+-Frontend team uses this to show report + video from the event
+v1: id, timestamp, camera
+
+-ALPR + Frontend teams agree to add type (unknown/vehicle) + plate in 2nd version 
+-Frontend v1 (show report+video) + v2 (show report+video+vehicle plate if any)
+v2: id, timestamp, camera, type, plate (optional)
+
+-Access Control adds the person+cardholder types 
+v3: id, timestamp, camera, type, plate (optional), cardholer (optional)
+
+-Breaking change: video+frontend list of cameras
+v4: id, timestamp, cameras, type, plate
+
+
+
+Producer
+kubectl exec -c cp-kafka-broker -it mykafka-cp-kafka-0 -- /bin/bash /usr/bin/kafka-console-producer --broker-list localhost:9092 --topic test
+
+Consumer
+kubectl exec -c cp-kafka-broker -it mykafka-cp-kafka-0 -- /bin/bash  /usr/bin/kafka-console-consumer --bootstrap-server localhost:9092 --topic test --from-beginning
+
+
+After deployment:
+## ------------------------------------------------------
+## Zookeeper
+## ------------------------------------------------------
+Connection string for Confluent Kafka:
+  mykafka-cp-zookeeper-0.mykafka-cp-zookeeper-headless:2181,mykafka-cp-zookeeper-1.mykafka-cp-zookeeper-headless:2181,...
+
+To connect from a client pod:
+
+1. Deploy a zookeeper client pod with configuration:
+
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: zookeeper-client
+      namespace: default
+    spec:
+      containers:
+      - name: zookeeper-client
+        image: confluentinc/cp-zookeeper:5.5.0
+        command:
+          - sh
+          - -c
+          - "exec tail -f /dev/null"
+
+2. Log into the Pod
+
+  kubectl exec -it zookeeper-client -- /bin/bash
+
+3. Use zookeeper-shell to connect in the zookeeper-client Pod:
+
+  zookeeper-shell mykafka-cp-zookeeper:2181
+
+4. Explore with zookeeper commands, for example:
+
+  # Gives the list of active brokers
+  ls /brokers/ids
+
+  # Gives the list of topics
+  ls /brokers/topics
+
+  # Gives more detailed information of the broker id '0'
+  get /brokers/ids/0
+
+## ------------------------------------------------------
+## Kafka
+## ------------------------------------------------------
+To connect from a client pod:
+
+1. Deploy a kafka client pod with configuration: (cat <<EOF | kubectl apply -f -)
+
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: kafka-client
+      namespace: default
+    spec:
+      containers:
+      - name: kafka-client
+        image: confluentinc/cp-enterprise-kafka:5.5.0
+        command:
+          - sh
+          - -c
+          - "exec tail -f /dev/null"
+
+2. Log into the Pod
+
+  kubectl exec -it kafka-client -- /bin/bash
+
+3. Explore with kafka commands:
+
+  # Create the topic
+  kafka-topics --zookeeper mykafka-cp-zookeeper-headless:2181 --topic mykafka-topic --create --partitions 1 --replication-factor 1 --if-not-exists
+
+  # Create a message
+  MESSAGE="`date -u`"
+
+  # Produce a test message to the topic
+  echo "$MESSAGE" | kafka-console-producer --broker-list mykafka-cp-kafka-headless:9092 --topic mykafka-topic
+
+  # Consume a test message from the topic
+  kafka-console-consumer --bootstrap-server mykafka-cp-kafka-headless:9092 --topic mykafka-topic --from-beginning --timeout-ms 2000 --max-messages 1 | grep "$MESSAGE"
